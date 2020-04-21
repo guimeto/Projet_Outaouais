@@ -10,12 +10,10 @@ import xarray as xr
 import numpy as np
 #for interpolation
 from scipy.spatial import cKDTree
-path_source = 'K:/PROJETS/PROJET_OUTAOUAIS/Daily/tmax/'
-import gc
-gc.collect()
+path_source = './Daymet_Month_Indices/PrecTOT/'
 
-variable = 'Tasmax'
-yi = 1980
+variable = 'Monthly_PrecTOT'
+yi = 1990
 yf = 2019
 
 
@@ -26,7 +24,7 @@ lat_target.shape
 
 lon_target2d, lat_target2d = np.meshgrid(lon_target, lat_target)
 
-source = xr.open_dataset(path_source + 'Daymet_v3_tmax_1980_OUTAOUAIS.nc')
+source = xr.open_dataset(path_source + 'Daymet_v3_Monthly_PrecTOT_199001_OUTAOUAIS.nc')
 lat_source = source.variables['lat'][:]
 lon_source = source.variables['lon'][:]
 
@@ -51,26 +49,22 @@ xt, yt, zt = lon_lat_to_cartesian(lon_target2d.flatten(), lat_target2d.flatten()
 tree = cKDTree(np.column_stack((xs, ys, zs)))
 
 d, inds = tree.query(np.column_stack((xt, yt, zt)), k = 10)
+w = 1.0 / d**2
 
-def interpolate(source, target, d, inds):    
-    nt = source["time"].shape[0]
-    tmp = []
-    for t in range(0, nt):        
-        w = 1.0 / d**2
-        air_idw = np.sum(w * source.tmax[t].values.flatten()[inds], axis=1) / np.sum(w, axis=1)
-        air_idw.shape = target.shape
-        tmp.append(air_idw)
-    return tmp
+def interpolate(source, target, d, inds):         
+    w = 1.0 / d**2
+    pcp_idw = np.sum(w * source.prcp.values.flatten()[inds], axis=1) / np.sum(w, axis=1)
+    pcp_idw.shape = target.shape
+    return pcp_idw
 
 for year in range(yi,yf+1):
-    source = xr.open_dataset(path_source + 'Daymet_v3_tmax_'+str(year)+'_OUTAOUAIS.nc')
-    air_idw = interpolate(source,lon_target2d, d, inds)
-    
-    data_set = xr.Dataset( coords={'lon': ([ 'lon'], lon_target),
-                                     'lat': (['lat',], lat_target),
-                                     'time': source.time.values})
-    data_set["tasmax"] = (['time','lat', 'lon'],  air_idw)
-    
-    [data_set.sel(time=str(year)+'-'+'{:02d}'.format(i)).to_netcdf(path_source + 'Daymet_v3_' + variable + '_'+str(year)+'_'+'{:02d}'.format(i)+'_OUTAOUAIS_ERA5grid.nc') for i in range(1,13)]
-    
+    for i in range (1,13,1):  
+        source = xr.open_dataset(path_source + 'Daymet_v3_' + variable + '_'+str(year)+'{:02d}'.format(i)+'_OUTAOUAIS.nc')
+        pcp_idw = interpolate(source,lon_target2d, d, inds)
+        
+        data_set = xr.Dataset( coords={'lon': ([ 'lon'], lon_target),
+                                             'lat': (['lat',], lat_target)})
+        data_set["PrecTOT"] = (['lat', 'lon'],  pcp_idw)
+        
+        data_set.to_netcdf(path_source + 'Daymet_v3_' + variable + '_'+str(year)+'_'+'{:02d}'.format(i)+'_OUTAOUAIS_ERA5grid.nc')
 

@@ -15,7 +15,7 @@ yi = 1990
 yf = 2019
 
 #for month in ['01','02','03','04','05','06','07','08','09','10','11','12']:
-for month in ['12']:    
+for month in ['11']:    
     # lecture de la serie d ERA5
     path_era5 = 'J:/REANALYSES/ERA5/Month_tasmax_Outaouais/'
     file = path_era5 + 'ERA5_Outaouais_'+variable + '_CAN_'
@@ -31,7 +31,7 @@ for month in ['12']:
     daymet_all = xr.concat([xr.open_dataset(f) for f in multi_file], 'time')
     
     #daymet_all = daymet_all.variables['Mean_tasmax'][:].squeeze()
-
+    rhowT,pvalT=stats.spearmanr(daymet_all.Mean_tasmax.values, era5_all.t2m.values,axis=0) # Calcule les corrélations pour chaque point grille
     
     corr_pearson_ERA5 = np.zeros((era5_all['t2m'].shape[1],era5_all['t2m'].shape[2]),dtype=float)
     
